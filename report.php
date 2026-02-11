@@ -251,7 +251,7 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
             $filteroneattempt = '1 = 1';
         }
 
-        $sql = "SELECT DISTINCT a.id attemptid, a.timefinish, u.firstname, u.lastname
+        $sql = "SELECT DISTINCT a.id attemptid, a.timefinish, u.firstname, u.lastname, u.username
                            FROM {quiz_attempts} a
                       LEFT JOIN {user} u ON a.userid = u.id
                                 $joins->joins
@@ -263,22 +263,26 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
                        ORDER BY attemptid";
 
         $results = $DB->get_records_sql($sql, ['quizid' => $this->quiz->id] + $joins->params);
-
+        
         $attempts = [];
         foreach ($results as $result) {
             $attempts[$result->attemptid]['firstname'] = $result->firstname;
             $attempts[$result->attemptid]['lastname'] = $result->lastname;
+            $attempts[$result->attemptid]['username'] = $result->username;
 
             // If the user has requested short filenames, we limit the last and first name to 40
             // characters each.
             if ($this->options->shortennames) {
                 $result->lastname = substr($result->lastname, 0, 40);
                 $result->firstname = substr($result->firstname, 0, 40);
+                $result->username = substr($result->username, 0, 40);
             }
 
-            // The user can choose whether to start with the first name or the last name.
+            // The user can choose whether to start with the first name or the last name, and whether to include username.
             if ($this->options->nameordering === 'firstlast') {
                 $name = $result->firstname . '_' . $result->lastname;
+            } else if ($this->options->nameordering === 'lastfirstuser') {
+                $name = $result->lastname . '_' . $result->firstname . '_' . $result->username;
             } else {
                 $name = $result->lastname . '_' . $result->firstname;
             }
@@ -331,34 +335,25 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
             $details[$questionfolder]['questiontext'] = $quba->get_question_summary($slot) ?? '';
             $details[$questionfolder]['responsetext'] = $quba->get_response_summary($slot) ?? '';
 
-            // If the user wants to use formatted text rather than the summary, fetch the true question text
-            // and response now. Note that this setting will be overridden, if output is TXT instead of PDF.
-            // We use format_text(), because either we currently have the summary (plain-text) or we will have
-            // formatted text, but it might be in MARKDOWN or other formats. We consider the text as trusted
-            // (because it has been filtered before) and disable filtering. Also, we do not put <div> tags
-            // around it, as that is done anyway during generation of the PDF.
+            // Since we always use HTML source (not plain text summary), we fetch the formatted text for the response.
+            // We use format_text() with trusted content and no filtering.
             $qa = $quba->get_question_attempt($slot);
             $formattingoptions = [
                 'trusted' => true,
                 'filter' => false,
                 'para' => false,
             ];
-            // If the source is HTML, we will do that for the response. Otherwise, we might have to convert the summary
-            // to HTML, depending on the desired output format.
-            if ($this->options->source === 'html') {
-                $responsehtml = format_text(
-                    strval($qa->get_last_qt_var('answer', '')),
-                    $qa->get_last_qt_var('answerformat', FORMAT_PLAIN),
-                    $formattingoptions
-                );
-                $details[$questionfolder]['responsetext'] = $responsehtml;
-            } else if ($this->options->fileformat === 'pdf') {
-                $details[$questionfolder]['responsetext'] = format_text($details[$questionfolder]['responsetext'], FORMAT_PLAIN);
-            }
 
-            // For the question text, however, we also make sure that the user did not override the source
+            $responsehtml = format_text(
+                strval($qa->get_last_qt_var('answer', '')),
+                $qa->get_last_qt_var('answerformat', FORMAT_PLAIN),
+                $formattingoptions
+            );
+            $details[$questionfolder]['responsetext'] = $responsehtml;
+
+            // For the question text, we also make sure that the user did not override the source
             // by using the 'forceqtsummary' option.
-            if ($this->options->source === 'html' && !$this->options->forceqtsummary) {
+            if (!$this->options->forceqtsummary) {
                 // The question text might contain images with a @@PLUGINFILE@@ URL, so we must run it through
                 // the attempt's rewrite_pluginfile_urls() function first. Afterwards, we run it through the HTML
                 // formatter, as with the response text.
@@ -375,7 +370,7 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
                 $questionhtml = $this->replace_image_paths_in_questiontext($questionhtml);
 
                 $details[$questionfolder]['questiontext'] = $questionhtml;
-            } else if ($this->options->fileformat === 'pdf') {
+            } else {
                 $details[$questionfolder]['questiontext'] = format_text($details[$questionfolder]['questiontext'], FORMAT_PLAIN);
             }
 
@@ -506,12 +501,9 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
             foreach ($questions as $questionpath => $questiondetails) {
                 $questionno++;
 
-                // Depending on the user's choice, the files will either be grouped by attempt or by question.
-                if ($this->options->groupby === 'byattempt') {
-                    $path = $attemptdata['path'] . '/' . $questionpath;
-                } else {
-                    $path = $questionpath . '/' . $attemptdata['path'];
-                }
+                // Since groupby is always 'byquestion', we use this structure:
+                $path = $questionpath . '/' . $attemptdata['path'];
+                
                 // If the user wants all questions in one single PDF, we will use a special filename.
                 // The parts of the path name (attempt and question path) do not contain any slashes, because
                 // they have been cleaned via PARAM_FILE. So we can just chop off at the slash and add our new
@@ -521,47 +513,41 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
                 // Build the full name according to user setting.
                 if ($this->options->nameordering === 'firstlast') {
                     $fullname = $attemptdata['firstname'] . ' ' . $attemptdata['lastname'];
+                } else if ($this->options->nameordering === 'lastfirstuser') {
+                    $fullname = $attemptdata['lastname'] . ' ' . $attemptdata['firstname'] . ' (' . $attemptdata['username'] . ')';
                 } else {
                     $fullname = $attemptdata['lastname'] . ' ' . $attemptdata['firstname'];
                 }
 
                 try {
-                    // If the user wants a flat archive structure, we will store stuff as attempt_1/question_1_response.pdf
-                    // or question_1/attempt_1_questiontext.pdf or attempt_1/question_1_attachments/... rather than
-                    // as attempt_1/question_1/response.pdf and the like; we proceed accordingly for TXT files.
-                    $filenameprefix = $path . ($this->options->flatarchive ? '_' : '/');
-                    if ($this->options->fileformat === 'pdf') {
-                        // We will ship out the PDF if (a) the user does not want all answers in one file or
-                        // (b) we are at the last question for this attempt.
-                        $shipout = ($this->options->allinone == false) || ($nbquestions == $questionno);
+                    // Since flatarchive is always true, we store as question_1/attempt_1_response.pdf
+                    $filenameprefix = $path . '_';
 
-                        if ($this->options->allinone) {
-                            $header = get_string('responsewith', 'quiz_essaydownload', $questionno);
-                        } else {
-                            $header = get_string('response', 'quiz_essaydownload');
-                        }
+                    // We will ship out the PDF if (a) the user does not want all answers in one file or
+                    // (b) we are at the last question for this attempt.
+                    $shipout = ($this->options->allinone == false) || ($nbquestions == $questionno);
 
-                        $pdfcontent = $this->generate_pdf(
-                            self::OUTPUT_RESPONSE,
-                            $this->add_statistics_if_requested($questiondetails['responsetext'], FORMAT_HTML),
-                            $header,
-                            $fullname,
-                            $fullname,
-                            $shipout
-                        );
-
-                        // If the return value is not empty, i. e. if we are shipping out, we must now create a PDF file
-                        // in the archive.
-                        if ($pdfcontent !== '') {
-                            $zipwriter->add_file_from_string(
-                                ($this->options->allinone ? $groupedpath : $filenameprefix) . 'response.pdf',
-                                $pdfcontent
-                            );
-                        }
+                    if ($this->options->allinone) {
+                        $header = get_string('responsewith', 'quiz_essaydownload', $questionno);
                     } else {
+                        $header = get_string('response', 'quiz_essaydownload');
+                    }
+
+                    $pdfcontent = $this->generate_pdf(
+                        self::OUTPUT_RESPONSE,
+                        $this->add_statistics_if_requested($questiondetails['responsetext'], FORMAT_HTML),
+                        $header,
+                        $fullname,
+                        $fullname,
+                        $shipout
+                    );
+
+                    // If the return value is not empty, i. e. if we are shipping out, we must now create a PDF file
+                    // in the archive.
+                    if ($pdfcontent !== '') {
                         $zipwriter->add_file_from_string(
-                            $filenameprefix . 'response.txt',
-                            $this->add_statistics_if_requested($questiondetails['responsetext'])
+                            ($this->options->allinone ? $groupedpath : $filenameprefix) . 'response.pdf',
+                            $pdfcontent
                         );
                     }
 
@@ -569,28 +555,21 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
 
                     // Only include question text if instructed to do so.
                     if ($this->options->questiontext) {
-                        if ($this->options->fileformat === 'pdf') {
-                            $pdfcontent = $this->generate_pdf(
-                                self::OUTPUT_QUESTIONTEXT,
-                                $questiondetails['questiontext'],
-                                get_string('questiontext', 'question'),
-                                get_string('presentedto', 'quiz_essaydownload', $fullname),
-                                '',
-                                $shipout,
-                            );
+                        $pdfcontent = $this->generate_pdf(
+                            self::OUTPUT_QUESTIONTEXT,
+                            $questiondetails['questiontext'],
+                            get_string('questiontext', 'question'),
+                            get_string('presentedto', 'quiz_essaydownload', $fullname),
+                            '',
+                            $shipout,
+                        );
 
-                            // If the return value is not empty, i. e. if we are shipping out, we must now create a PDF file
-                            // in the archive.
-                            if ($pdfcontent !== '') {
-                                $zipwriter->add_file_from_string(
-                                    ($this->options->allinone ? $groupedpath : $filenameprefix) . 'questiontext.pdf',
-                                    $pdfcontent,
-                                );
-                            }
-                        } else {
+                        // If the return value is not empty, i. e. if we are shipping out, we must now create a PDF file
+                        // in the archive.
+                        if ($pdfcontent !== '') {
                             $zipwriter->add_file_from_string(
-                                $filenameprefix . 'questiontext.txt',
-                                $questiondetails['questiontext']
+                                ($this->options->allinone ? $groupedpath : $filenameprefix) . 'questiontext.pdf',
+                                $pdfcontent,
                             );
                         }
                     }
@@ -710,7 +689,7 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
         $text = str_replace("\xc2\xa0", "&nbsp;", $text);
 
         // If requested and using the original text, work around a bug with Atto, see MDL-82753 and MDL-67630.
-        if ($this->options->fixremfontsize && $this->options->source === 'html') {
+        if ($this->options->fixremfontsize) {
             $text = $this->workaround_atto_font_size_issue($text);
         }
 
@@ -746,7 +725,8 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
      * @return customTCPDF
      */
     protected function prepare_pdf_document(string $author = ''): customTCPDF {
-        $doc = new customTCPDF('P', 'mm', strtoupper($this->options->pageformat));
+        // Page format is always A4
+        $doc = new customTCPDF('P', 'mm', 'A4');
 
         $doc->SetCreator('quiz_essaydownload plugin for Moodle LMS');
         $doc->SetAuthor($author);
@@ -775,14 +755,10 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
         $doc->SetFont($fontname, '', $this->options->fontsize);
         $doc->setHeaderFont([$fontname, '', $this->options->fontsize]);
 
-        // If the footer is requested, enlarge the bottom margin accordingly. Setting the footer's
-        // font size to 80% of the base font size seems good.
-        $additionalfootermargin = 0;
-        if ($this->options->includefooter) {
-            $additionalfootermargin = customTCPDF::FOOTER_POSITION;
-            $doc->setFooterFont([$fontname, '', round(0.8 * $this->options->fontsize)]);
-        }
-        $doc->setPrintFooter($this->options->includefooter);
+        // Footer is always enabled
+        $additionalfootermargin = customTCPDF::FOOTER_POSITION;
+        $doc->setFooterFont([$fontname, '', round(0.8 * $this->options->fontsize)]);
+        $doc->setPrintFooter(true);
         $doc->SetAutoPageBreak(true, $this->options->marginbottom + $additionalfootermargin);
 
         return $doc;

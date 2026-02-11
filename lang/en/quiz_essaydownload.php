@@ -61,6 +61,7 @@ $string['includequestiontext_help'] = 'Including the question text might be usef
 $string['includestats'] = 'Include word and character count after response.';
 $string['includestats_help'] = 'Note that character count will exclude whitespace.';
 $string['lastfirst'] = 'Last name - First name';
+$string['lastfirstuser'] = 'Last name - First name - Username';
 $string['limitattempts'] = 'Limit attempts';
 $string['linedouble'] = 'Double';
 $string['lineoneandhalf'] = '1.5 lines';

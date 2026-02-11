@@ -1,9 +1,10 @@
 ![GitHub Release](https://img.shields.io/github/v/release/PhilippImhof/moodle-quiz_essaydownload)
 [![Automated code checks](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/checks.yml/badge.svg)](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/checks.yml) [![Automated testing](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/testing.yml/badge.svg)](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/testing.yml)
 
-moodle-quiz_essaydownload
+ubt-essaydownload
 -------------------------
 
+This fork is adapting the moodle plugin to the needs of the UBT.
 This is a quiz report plugin that allows bulk downloading of text answers and attachment files submitted in response to essay questions in a quiz.
 
 It has been inspired by the [quiz_downloadsubmissions](https://github.com/IITBombayWeb/moodle-quiz_downloadsubmissions) plugin which offers similar functionality.
@@ -29,21 +30,4 @@ the download in your browser.
 
 Note: No confirmation will be shown. Once you get your ZIP file, the work is done.
 
-
-#### Grouping by attempt or question?
-
-You can group the data in two different ways. If you group by attempt, your ZIP file will
-have the following structure:
-
-* StudentX/Question1
-* StudentX/Question2
-* StudentY/Question1
-* StudentY/Question2
-
-If you group by question, the structure will be as follows:
-
-* Question1/StudentX
-* Question1/StudentY
-* Question2/StudentX
-* Question2/StudentY
 

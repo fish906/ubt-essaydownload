@@ -48,7 +48,7 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     /** @var bool whether to include attachments (if there are) in the archive */
     public $attachments = true;
 
-    /** @var string file format TXT or PDF */
+    /** @var string file format always PDF */
     public $fileformat = 'pdf';
 
     /** @var bool whether to try to work around Atto bug MDL-67360 */
@@ -67,16 +67,16 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     public $forceqtsummary = false;
 
     /** @var string how to organise the sub folders in the archive (by question or by attempt) */
-    public $groupby = 'byattempt';
+    public $groupby = 'byquestion';
 
     /** @var bool whether a footer containing the page number should be added to PDFs */
-    public $includefooter = false;
+    public $includefooter = true;
 
     /** @var bool whether to include a word and character count after the response */
     public $includestats = false;
 
     /** @var float line spacing for PDF export */
-    public $linespacing = 1;
+    public $linespacing = 1.5;
 
     /** @var bool whether to include only (at most) one finished attempt per user according to grading method */
     public $onlyone = false;
@@ -88,7 +88,7 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     public $marginleft = 20;
 
     /** @var int right margin for PDF export */
-    public $marginright = 20;
+    public $marginright = 50;
 
     /** @var int top margin for PDF export */
     public $margintop = 20;
@@ -131,14 +131,10 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
 
         $toform->allinone = $this->allinone;
         $toform->attachments = $this->attachments;
-        $toform->fileformat = $this->fileformat;
         $toform->fixremfontsize = $this->fixremfontsize;
-        $toform->flatarchive = $this->flatarchive;
         $toform->font = $this->font;
         $toform->fontsize = $this->fontsize;
         $toform->forceqtsummary = $this->forceqtsummary;
-        $toform->groupby = $this->groupby;
-        $toform->includefooter = $this->includefooter;
         $toform->includestats = $this->includestats;
         $toform->linespacing = $this->linespacing;
         $toform->onlyone = $this->onlyone;
@@ -147,10 +143,8 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $toform->marginright = $this->marginright;
         $toform->margintop = $this->margintop;
         $toform->nameordering = $this->nameordering;
-        $toform->pageformat = $this->pageformat;
         $toform->questiontext = $this->questiontext;
         $toform->shortennames = $this->shortennames;
-        $toform->source = $this->source;
 
         return $toform;
     }
@@ -163,14 +157,10 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     public function setup_from_form_data($fromform): void {
         $this->allinone = $fromform->allinone;
         $this->attachments = $fromform->attachments;
-        $this->fileformat = $fromform->fileformat;
         $this->fixremfontsize = $fromform->fixremfontsize;
-        $this->flatarchive = $fromform->flatarchive;
         $this->font = $fromform->font ?? '';
         $this->fontsize = $fromform->fontsize ?? '';
         $this->forceqtsummary = $fromform->forceqtsummary;
-        $this->groupby = $fromform->groupby;
-        $this->includefooter = $fromform->includefooter;
         $this->includestats = $fromform->includestats;
         $this->linespacing = $fromform->linespacing ?? '';
         $this->onlyone = $fromform->onlyone ?? '';
@@ -179,10 +169,8 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $this->marginright = $fromform->marginright ?? '';
         $this->margintop = $fromform->margintop ?? '';
         $this->nameordering = $fromform->nameordering;
-        $this->pageformat = $fromform->pageformat ?? '';
         $this->questiontext = $fromform->questiontext;
         $this->shortennames = $fromform->shortennames;
-        $this->source = $fromform->source ?? '';
     }
 
     /**
@@ -191,14 +179,10 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     public function setup_from_params() {
         $this->allinone = optional_param('allinone', $this->allinone, PARAM_BOOL);
         $this->attachments = optional_param('attachments', $this->attachments, PARAM_BOOL);
-        $this->fileformat = optional_param('fileformat', $this->fileformat, PARAM_ALPHA);
         $this->fixremfontsize = optional_param('fixremfontsize', $this->fixremfontsize, PARAM_BOOL);
-        $this->flatarchive = optional_param('flatarchive', $this->flatarchive, PARAM_BOOL);
         $this->font = optional_param('font', $this->font, PARAM_ALPHA);
         $this->fontsize = optional_param('fontsize', $this->fontsize, PARAM_INT);
         $this->forceqtsummary = optional_param('forceqtsummary', $this->forceqtsummary, PARAM_BOOL);
-        $this->groupby = optional_param('groupby', $this->groupby, PARAM_ALPHA);
-        $this->includefooter = optional_param('includefooter', $this->includefooter, PARAM_BOOL);
         $this->includestats = optional_param('includestats', $this->includestats, PARAM_BOOL);
         $this->linespacing = optional_param('linespacing', $this->linespacing, PARAM_FLOAT);
         $this->onlyone = optional_param('onlyone', $this->onlyone, PARAM_BOOL);
@@ -207,10 +191,8 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $this->marginright = optional_param('marginright', $this->marginright, PARAM_INT);
         $this->margintop = optional_param('margintop', $this->margintop, PARAM_INT);
         $this->nameordering = optional_param('nameordering', $this->nameordering, PARAM_ALPHA);
-        $this->pageformat = optional_param('pageformat', $this->pageformat, PARAM_ALPHA);
         $this->questiontext = optional_param('questiontext', $this->questiontext, PARAM_BOOL);
         $this->shortennames = optional_param('shortennames', $this->shortennames, PARAM_BOOL);
-        $this->source = optional_param('source', $this->source, PARAM_ALPHA);
     }
 
     /**
@@ -220,12 +202,9 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     public function setup_from_user_preferences() {
         $this->allinone = get_user_preferences('quiz_essaydownload_allinone', $this->allinone);
         $this->attachments = get_user_preferences('quiz_essaydownload_attachments', $this->attachments);
-        $this->fileformat = get_user_preferences('quiz_essaydownload_fileformat', $this->fileformat);
         $this->fixremfontsize = get_user_preferences('quiz_essaydownload_fixremfontsize', $this->fixremfontsize);
-        $this->flatarchive = get_user_preferences('quiz_essaydownload_flatarchive', $this->flatarchive);
         $this->font = get_user_preferences('quiz_essaydownload_font', $this->font);
         $this->fontsize = get_user_preferences('quiz_essaydownload_fontsize', $this->fontsize);
-        $this->groupby = get_user_preferences('quiz_essaydownload_groupby', $this->groupby);
         $this->includefooter = get_user_preferences('quiz_essaydownload_includefooter', $this->includefooter);
         $this->includestats = get_user_preferences('quiz_essaydownload_includestats', $this->includestats);
         $this->linespacing = get_user_preferences('quiz_essaydownload_linespacing', $this->linespacing);
@@ -235,42 +214,29 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $this->marginright = get_user_preferences('quiz_essaydownload_marginright', $this->marginright);
         $this->margintop = get_user_preferences('quiz_essaydownload_margintop', $this->margintop);
         $this->nameordering = get_user_preferences('quiz_essaydownload_nameordering', $this->nameordering);
-        $this->pageformat = get_user_preferences('quiz_essaydownload_pageformat', $this->pageformat);
         $this->questiontext = get_user_preferences('quiz_essaydownload_questiontext', $this->questiontext);
         $this->shortennames = get_user_preferences('quiz_essaydownload_shortennames', $this->shortennames);
-        $this->source = get_user_preferences('quiz_essaydownload_source', $this->source);
     }
 
     /**
      * Safe form fields to user preferences.
      */
     public function update_user_preferences() {
+        set_user_preference('quiz_essaydownload_allinone', $this->allinone);
         set_user_preference('quiz_essaydownload_attachments', $this->attachments);
-        set_user_preference('quiz_essaydownload_fileformat', $this->fileformat);
-        set_user_preference('quiz_essaydownload_flatarchive', $this->flatarchive);
-        set_user_preference('quiz_essaydownload_groupby', $this->groupby);
+        set_user_preference('quiz_essaydownload_fixremfontsize', $this->fixremfontsize);
+        set_user_preference('quiz_essaydownload_font', $this->font);
+        set_user_preference('quiz_essaydownload_fontsize', $this->fontsize);
+        set_user_preference('quiz_essaydownload_includefooter', $this->includefooter);
         set_user_preference('quiz_essaydownload_includestats', $this->includestats);
+        set_user_preference('quiz_essaydownload_linespacing', $this->linespacing);
+        set_user_preference('quiz_essaydownload_marginbottom', $this->marginbottom);
+        set_user_preference('quiz_essaydownload_marginleft', $this->marginleft);
+        set_user_preference('quiz_essaydownload_marginright', $this->marginright);
+        set_user_preference('quiz_essaydownload_margintop', $this->margintop);
         set_user_preference('quiz_essaydownload_nameordering', $this->nameordering);
         set_user_preference('quiz_essaydownload_questiontext', $this->questiontext);
         set_user_preference('quiz_essaydownload_shortennames', $this->shortennames);
-
-        // The following settings should only be stored, if the user creates PDF files, because if they
-        // don't, the corresponding fields will be disabled and have no values, so the user pref would
-        // be removed and thus the field would not be pre-filled next time.
-        if ($this->fileformat === 'pdf') {
-            set_user_preference('quiz_essaydownload_allinone', $this->allinone);
-            set_user_preference('quiz_essaydownload_fixremfontsize', $this->fixremfontsize);
-            set_user_preference('quiz_essaydownload_font', $this->font);
-            set_user_preference('quiz_essaydownload_fontsize', $this->fontsize);
-            set_user_preference('quiz_essaydownload_includefooter', $this->includefooter);
-            set_user_preference('quiz_essaydownload_linespacing', $this->linespacing);
-            set_user_preference('quiz_essaydownload_marginbottom', $this->marginbottom);
-            set_user_preference('quiz_essaydownload_marginleft', $this->marginleft);
-            set_user_preference('quiz_essaydownload_marginright', $this->marginright);
-            set_user_preference('quiz_essaydownload_margintop', $this->margintop);
-            set_user_preference('quiz_essaydownload_pageformat', $this->pageformat);
-            set_user_preference('quiz_essaydownload_source', $this->source);
-        }
 
         // The user can only set the following option, if the quiz allows limitation to (at most) one
         // attempt. If they cannot set the option, we should not update the user prefs.
@@ -280,11 +246,10 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     }
 
     /**
-     * Deal with conflicting options, e.g. user requesting TXT output, but HTML source.
+     * Deal with conflicting options -> no longer needed as the form now disables conflicting options, but we keep this here just in case.
      */
     public function resolve_dependencies() {
-        if ($this->fileformat === 'txt') {
-            $this->source = 'plain';
+        // All dependencies are resolved by fixed values
         }
     }
 }
