@@ -1,0 +1,300 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+      - development
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # Job 1: Validate the plugin structure and code
+  validate:
+    name: Validate Plugin
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        
+    - name: Check file structure
+      run: |
+        echo "Checking required files..."
+        required_files=(
+          "version.php"
+          "report.php"
+          "essaydownload_form.php"
+          "essaydownload_options.php"
+          "classes/customTCPDF.php"
+          "classes/privacy/provider.php"
+          "db/install.php"
+          "lang/en/quiz_essaydownload.php"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "Missing required file: $file"
+            exit 1
+          fi
+          echo "Found: $file"
+        done
+        
+    - name: PHP Lint
+      run: |
+        echo "Running PHP syntax check..."
+        find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; | grep -v "No syntax errors"
+        if [ $? -eq 0 ]; then
+          echo "All PHP files are valid"
+        else
+          echo "PHP syntax errors found"
+          exit 1
+        fi
+
+  # Job 2: Build the plugin ZIP file
+  build:
+    name: Build Plugin Package
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get version from version.php
+      id: get_version
+      run: |
+        VERSION=$(php -r "include 'version.php'; echo \$plugin->version;")
+        RELEASE=$(php -r "include 'version.php'; echo \$plugin->release;")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "release=$RELEASE" >> $GITHUB_OUTPUT
+        echo "Plugin version: $VERSION"
+        echo "Plugin release: $RELEASE"
+        
+    - name: Create build directory
+      run: |
+        echo "Creating build structure..."
+        mkdir -p build/essaydownload
+        
+    - name: Copy plugin files
+      run: |
+        echo "Copying plugin files..."
+        
+        # Copy main PHP files
+        cp version.php build/essaydownload/
+        cp report.php build/essaydownload/
+        cp essaydownload_form.php build/essaydownload/
+        cp essaydownload_options.php build/essaydownload/
+        
+        # Copy classes
+        mkdir -p build/essaydownload/classes/privacy
+        cp classes/customTCPDF.php build/essaydownload/classes/
+        cp classes/privacy/provider.php build/essaydownload/classes/privacy/
+        
+        # Copy database scripts
+        mkdir -p build/essaydownload/db
+        cp db/install.php build/essaydownload/db/
+        
+        # Copy language files
+        mkdir -p build/essaydownload/lang/en
+        cp lang/en/quiz_essaydownload.php build/essaydownload/lang/en/
+        
+        # Copy documentation (optional, for reference in the package)
+        if [ -f README.md ]; then
+          cp README.md build/essaydownload/
+        fi
+        if [ -f FORK_CHANGES.md ]; then
+          cp FORK_CHANGES.md build/essaydownload/
+        fi
+        
+        echo "✓ Files copied"
+        
+    - name: Create ZIP archive
+      run: |
+        echo "Creating ZIP archive..."
+        cd build
+        zip -r ../quiz_essaydownload-${{ steps.get_version.outputs.release }}.zip essaydownload/
+        cd ..
+        
+        # Create a generic filename too
+        cp quiz_essaydownload-${{ steps.get_version.outputs.release }}.zip quiz_essaydownload.zip
+        
+        echo "✓ ZIP created"
+        ls -lh quiz_essaydownload*.zip
+        
+    - name: Generate checksum
+      run: |
+        echo "Generating checksums..."
+        sha256sum quiz_essaydownload-${{ steps.get_version.outputs.release }}.zip > quiz_essaydownload-${{ steps.get_version.outputs.release }}.zip.sha256
+        sha256sum quiz_essaydownload.zip > quiz_essaydownload.zip.sha256
+        cat quiz_essaydownload-${{ steps.get_version.outputs.release }}.zip.sha256
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: plugin-package
+        path: |
+          quiz_essaydownload*.zip
+          quiz_essaydownload*.zip.sha256
+        retention-days: 30
+
+  # Job 3: Create GitHub Release (only for version tags)
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get version info
+      id: version_info
+      run: |
+        VERSION=$(php -r "include 'version.php'; echo \$plugin->version;")
+        RELEASE=$(php -r "include 'version.php'; echo \$plugin->release;")
+        TAG=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "release=$RELEASE" >> $GITHUB_OUTPUT
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: plugin-package
+        
+    - name: Read checksums
+      id: checksums
+      run: |
+        CHECKSUM=$(cat quiz_essaydownload-${{ steps.version_info.outputs.release }}.zip.sha256 | cut -d' ' -f1)
+        echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+        
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat > release_notes.md << 'EOF'
+        ## Quiz Essay Download Plugin - Custom Fork
+        
+        Release ${{ steps.version_info.outputs.tag }} (${{ steps.version_info.outputs.release }})
+        
+        ### 📦 Installation
+        
+        **Method 1: Install via Moodle (Recommended)**
+        1. Download `quiz_essaydownload.zip` below
+        2. In Moodle: **Site administration** > **Plugins** > **Install plugins**
+        3. Upload the ZIP file
+        4. Follow the installation prompts
+        5. Clear caches: **Site administration** > **Development** > **Purge all caches**
+        
+        **Method 2: Manual Installation**
+        ```bash
+        cd [moodle-root]/mod/quiz/report/
+        wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version_info.outputs.tag }}/quiz_essaydownload.zip
+        unzip quiz_essaydownload.zip
+        # Visit Site administration > Notifications in Moodle
+        ```
+        
+        **Method 3: Git Clone**
+        ```bash
+        cd [moodle-root]/mod/quiz/report/
+        git clone --branch ${{ steps.version_info.outputs.tag }} https://github.com/${{ github.repository }}.git essaydownload
+        ```
+        
+        ### ✨ Features
+        
+        - **Simplified Options**: Always groups by question, uses flat archive structure
+        - **PDF Only**: Consistent, professional output
+        - **Username Support**: Include username in file/folder names
+        - **Text Alignment**: Choose between left-aligned or justified text
+        - **A4 Format**: Standardized page size
+        - **Page Numbers**: Professional footer on every page
+        
+        ### Requirements
+        
+        - Moodle 4.1 - 5.1
+        - PHP 7.4 or higher
+        - Quiz module with essay questions
+        
+        ### Verification
+        
+        **SHA256 Checksum:**
+        ```
+        ${{ steps.checksums.outputs.checksum }}
+        ```
+        
+        Verify after download:
+        ```bash
+        sha256sum quiz_essaydownload.zip
+        ```
+        
+        ### Documentation
+        
+        - [Installation Guide](https://github.com/${{ github.repository }}/blob/main/INSTALLATION_GUIDE.md)
+        - [Technical Changes](https://github.com/${{ github.repository }}/blob/main/FORK_CHANGES.md)
+        - [Usage Instructions](https://github.com/${{ github.repository }}#usage)
+        
+        ### Known Issues
+        
+        None reported for this release.
+        
+        ---
+        
+        Based on [moodle-quiz_essaydownload](https://github.com/PhilippImhof/moodle-quiz_essaydownload) v1.6.4
+        EOF
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ steps.version_info.outputs.tag }}
+        body_path: release_notes.md
+        files: |
+          quiz_essaydownload.zip
+          quiz_essaydownload-${{ steps.version_info.outputs.release }}.zip
+          quiz_essaydownload.zip.sha256
+          quiz_essaydownload-${{ steps.version_info.outputs.release }}.zip.sha256
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job 4: Test installation (optional but recommended)
+  test:
+    name: Test Plugin Package
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: plugin-package
+        
+    - name: Test ZIP structure
+      run: |
+        echo "Testing ZIP structure..."
+        unzip -l quiz_essaydownload.zip
+        
+        # Extract and verify structure
+        unzip -q quiz_essaydownload.zip -d test_extract
+        
+        if [ ! -d "test_extract/essaydownload" ]; then
+          echo "ZIP doesn't have correct structure (missing essaydownload folder)"
+          exit 1
+        fi
+        
+        echo "ZIP structure is correct"
+        
+    - name: Verify checksums
+      run: |
+        echo "Verifying checksums..."
+        sha256sum -c quiz_essaydownload.zip.sha256
+        echo "Checksums verified"

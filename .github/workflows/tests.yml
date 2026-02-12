@@ -1,0 +1,53 @@
+name: PHP Compatibility Tests
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  php-compatibility:
+    name: Test PHP ${{ matrix.php-version }}
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['7.4', '8.0', '8.1', '8.2', '8.3']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP ${{ matrix.php-version }}
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        coverage: none
+        
+    - name: Validate PHP syntax
+      run: |
+        echo "Testing PHP ${{ matrix.php-version }} compatibility..."
+        
+        # Find and lint all PHP files
+        find . -name "*.php" -not -path "./vendor/*" | while read file; do
+          php -l "$file"
+          if [ $? -ne 0 ]; then
+            echo "Syntax error in: $file"
+            exit 1
+          fi
+        done
+        
+        echo "All PHP files are compatible with PHP ${{ matrix.php-version }}"
+        
+    - name: Check version.php
+      run: |
+        php -r "
+        include 'version.php';
+        echo 'Component: ' . \$plugin->component . PHP_EOL;
+        echo 'Version: ' . \$plugin->version . PHP_EOL;
+        echo 'Release: ' . \$plugin->release . PHP_EOL;
+        echo 'Requires: ' . \$plugin->requires . PHP_EOL;
+        echo 'Maturity: ' . \$plugin->maturity . PHP_EOL;
+        "
