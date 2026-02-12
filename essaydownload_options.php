@@ -260,4 +260,3 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         // All dependencies are resolved by fixed values
         }
     }
-}
