@@ -707,7 +707,21 @@ class quiz_essaydownload_report extends quiz_essaydownload_report_parent_alias {
         $doc->AddPage();
 
         $linespacebase = 1.25;
-        $doc->writeHTML('<div style="line-height: ' . $this->options->linespacing * $linespacebase . ';">' . $text . '</div>');
+
+        // Apply text alignment
+        $alignment = 'L'; // Default left
+        if ($this->options->textalign === 'justify') {
+            $alignment = 'J';
+        }
+
+        $doc->writeHTML(
+            '<div style="line-height: ' . $this->options->linespacing * $linespacebase . '; text-align: ' . $this->options->textalign . ';">' . $text . '</div>',
+            true,
+            false,
+            true,
+            false,
+            $alignment
+        );
 
         // If we ship out, we finish the PDF, reset the output buffer. Otherwise, we simply return an empty string.
         if ($shipout) {

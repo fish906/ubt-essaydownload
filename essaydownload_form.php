@@ -188,6 +188,14 @@ class quiz_essaydownload_form extends moodleform {
         $mform->addElement('text', 'fontsize', get_string('fontsize', 'quiz_essaydownload'), ['size' => 3]);
         $mform->setType('fontsize', PARAM_INT);
         $mform->addHelpButton('fontsize', 'fontsize', 'quiz_essaydownload');
+
+        $mform->addElement('select', 'textalign', get_string('textalignment', 'quiz_essaydownload'), [
+            'left' => get_string('alignleft', 'quiz_essaydownload'),
+            'justify' => get_string('alignjustify', 'quiz_essaydownload'),
+        ]);
+        $mform->setType('textalign', PARAM_ALPHA);
+        $mform->setDefault('textalign', 'left');
+        $mform->addHelpButton('textalign', 'textalignment', 'quiz_essaydownload');
     }
 
     /**

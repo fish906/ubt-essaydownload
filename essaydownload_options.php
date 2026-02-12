@@ -108,6 +108,9 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
     /** @var string which source to use: plain-text summary or original HTML text */
     public $source = 'html';
 
+    /** @var string text alignment for PDF export */
+    public $textalign = 'left';
+
     /**
      * Constructor
      *
@@ -145,6 +148,7 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $toform->nameordering = $this->nameordering;
         $toform->questiontext = $this->questiontext;
         $toform->shortennames = $this->shortennames;
+        $toform->textalign = $this->textalign;
 
         return $toform;
     }
@@ -171,6 +175,7 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $this->nameordering = $fromform->nameordering;
         $this->questiontext = $fromform->questiontext;
         $this->shortennames = $fromform->shortennames;
+        $this->textalign = $fromform->textalign ?? '';
     }
 
     /**
@@ -193,6 +198,7 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $this->nameordering = optional_param('nameordering', $this->nameordering, PARAM_ALPHA);
         $this->questiontext = optional_param('questiontext', $this->questiontext, PARAM_BOOL);
         $this->shortennames = optional_param('shortennames', $this->shortennames, PARAM_BOOL);
+        $this->textalign = optional_param('textalign', $this->textalign, PARAM_ALPHA);
     }
 
     /**
@@ -216,6 +222,7 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         $this->nameordering = get_user_preferences('quiz_essaydownload_nameordering', $this->nameordering);
         $this->questiontext = get_user_preferences('quiz_essaydownload_questiontext', $this->questiontext);
         $this->shortennames = get_user_preferences('quiz_essaydownload_shortennames', $this->shortennames);
+        $this->textalign = get_user_preferences('quiz_essaydownload_textalign', $this->textalign);
     }
 
     /**
@@ -237,6 +244,7 @@ class quiz_essaydownload_options extends quiz_essaydownload_options_parent_class
         set_user_preference('quiz_essaydownload_nameordering', $this->nameordering);
         set_user_preference('quiz_essaydownload_questiontext', $this->questiontext);
         set_user_preference('quiz_essaydownload_shortennames', $this->shortennames);
+        set_user_preference('quiz_essaydownload_textalign', $this->textalign);
 
         // The user can only set the following option, if the quiz allows limitation to (at most) one
         // attempt. If they cannot set the option, we should not update the user prefs.
