@@ -1,5 +1,6 @@
-![GitHub Release](https://img.shields.io/github/v/release/PhilippImhof/moodle-quiz_essaydownload)
-[![Automated code checks](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/checks.yml/badge.svg)](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/checks.yml) [![Automated testing](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/testing.yml/badge.svg)](https://github.com/PhilippImhof/moodle-quiz_essaydownload/actions/workflows/testing.yml)
+![GitHub Release](https://img.shields.io/github/v/release/fish906/ubt-essaydownload)
+![Build Status](https://github.com/USERNAME/REPO/workflows/Build%20and%20Release/badge.svg)
+![PHP Tests](https://github.com/USERNAME/REPO/workflows/PHP%20Compatibility%20Tests/badge.svg)
 
 ubt-essaydownload
 -------------------------

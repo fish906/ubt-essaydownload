@@ -40,24 +40,44 @@ jobs:
           "lang/en/quiz_essaydownload.php"
         )
         
+        missing_files=0
         for file in "${required_files[@]}"; do
           if [ ! -f "$file" ]; then
             echo "Missing required file: $file"
-            exit 1
+            missing_files=$((missing_files + 1))
+          else
+            echo "Found: $file"
           fi
-          echo "Found: $file"
         done
+        
+        if [ $missing_files -gt 0 ]; then
+          echo "$missing_files required file(s) missing"
+          exit 1
+        fi
+        echo "All required files present"
         
     - name: PHP Lint
       run: |
         echo "Running PHP syntax check..."
-        find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; | grep -v "No syntax errors"
-        if [ $? -eq 0 ]; then
-          echo "All PHP files are valid"
-        else
+        
+        # Store exit code
+        lint_failed=0
+        
+        # Find and lint all PHP files
+        while IFS= read -r file; do
+          if ! php -l "$file" > /dev/null 2>&1; then
+            echo "Syntax error in: $file"
+            php -l "$file"
+            lint_failed=1
+          fi
+        done < <(find . -name "*.php" -not -path "./vendor/*")
+        
+        if [ $lint_failed -eq 1 ]; then
           echo "PHP syntax errors found"
           exit 1
         fi
+        
+        echo "All PHP files passed syntax check"
 
   # Job 2: Build the plugin ZIP file
   build:
